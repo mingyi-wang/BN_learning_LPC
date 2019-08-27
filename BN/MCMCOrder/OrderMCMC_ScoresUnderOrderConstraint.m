@@ -1,0 +1,148 @@
+function ScoresStructureUnderOrderConstraint=OrderMCMC_ScoresUnderOrderConstraint(ScoresStructure,nodeOrder)
+% Dirk Husmeier, December 2004
+% Corrections: March 2005
+% Computes the cumulative probability distributions for
+% all parent-child configurations that abide by a given node order.
+% The cumulative probabilities can be computed
+% in descending order or ascending order.
+% Descending order is the default:
+% CumProb(1) is the highest score
+% CumProb(NparentConfig) is the lowest score
+% This is the form chosen in SBmcmc for Imp-MCMC,
+% and it has the effect of a slight numerical stabilization.
+% Ascending order means:
+% CumProb(1) is the lowest score
+% CumProb(NparentConfig) is the highest score
+% If you want to use this option,
+% set flag_decreasing_order=0 in the code below
+%
+% INPUT
+% ScoresStructure: Scores structure from SCORES.mat
+%
+% OUTPUT
+% ScoresStructureUnderOrderConstraint
+%
+% FUNCTION CALLS
+% --> OrderMCMC_ValidParents
+%
+% INVOCATION
+% ScoresStructureUnderOrderConstraint=OrderMCMC_ScoresUnderOrderConstraint(ScoresStructure,nodeOrder)
+
+Nnodes=length(ScoresStructure);
+for node=1:Nnodes
+    if node==80
+       node  
+    end 
+     NparentConfig= length(ScoresStructure{node}.LogBayesScores);
+     nParentConfigNew=0;
+     for nParentConfig=1:NparentConfig
+        parentConfig= ScoresStructure{node}.Parents{nParentConfig};
+        flag_validParents=OrderMCMC_ValidParents(nodeOrder,node,parentConfig);
+        % Copy valid entries to the new structure.
+        % Valid entries are those that satisfy the given order constraint.
+        if flag_validParents
+            nParentConfigNew=nParentConfigNew+1;
+            ScoresStructureUnderOrderConstraint{node}.LogBayesScores(nParentConfigNew)= ...
+            ScoresStructure{node}.LogBayesScores(nParentConfig);
+            ScoresStructureUnderOrderConstraint{node}.Parents{nParentConfigNew}= ...
+            ScoresStructure{node}.Parents{nParentConfig};
+        end
+        % Make sure you have at least one parent configuration:
+        % the empty parent set.
+        if nParentConfigNew==0
+           ScoresStructureUnderOrderConstraint{node}.Parents{1}=[];
+           ScoresStructureUnderOrderConstraint{node}.LogBayesScores(1)= ...
+             min(ScoresStructure{node}.LogBayesScores);
+             % In fact, this score is arbitrary since cum prob will
+             % become 1 irrespective of this score.
+        end   
+     end
+end
+
+% ------------------------------------------------
+% Compute the cumulative probability distribution 
+% ------------------------------------------------
+% for the
+% new scores structure that satisfies the order constraint.
+flag_decreasing_order=1;
+if flag_decreasing_order
+% Decreasing order of cum prob scores, 
+% for consistency with SBmcmc and numerical stability.
+% Note that the original SCORES matrix is already sorted;
+% hence, no further sorting is needed.
+for node=1:Nnodes
+    if node==80
+        node
+        
+    end
+     NparentConfig= length(ScoresStructureUnderOrderConstraint{node}.LogBayesScores);
+     ScoresStructureUnderOrderConstraint{node}.CumProb(NparentConfig)= ...
+     exp(ScoresStructureUnderOrderConstraint{node}.LogBayesScores(NparentConfig));
+     for nParentConfig=NparentConfig-1:-1:1
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)= ...
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig+1)+ ...
+         exp(ScoresStructureUnderOrderConstraint{node}.LogBayesScores(nParentConfig));
+     end
+     % Normalization: descending order
+     % CumProb(1) is the highest score
+     % CumProb(NparentConfig) is the lowest score
+     for nParentConfig=NparentConfig:-1:1
+         if ScoresStructureUnderOrderConstraint{node}.CumProb(1)==0 | isinf(ScoresStructureUnderOrderConstraint{node}.CumProb(1))
+            if ScoresStructureUnderOrderConstraint{node}.CumProb(1)==0
+               if ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)==0  
+                ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)=1;
+               else
+                 error('error!');
+               end
+            end
+            if  isinf(ScoresStructureUnderOrderConstraint{node}.CumProb(1))
+             if isinf(ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig))   
+                ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)=1;
+              else
+                ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)=0;
+             end
+            end
+        else
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)= ...
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)/ ...
+         ScoresStructureUnderOrderConstraint{node}.CumProb(1);
+         end
+     end
+%      if NparentConfig==1
+%         if isnan(ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig))
+%           ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)=1;
+%         end
+%      end
+end
+
+else % --> if flag_decreasing_order
+% The commands below are perfectly o.k.
+% They compute the cumulative posterior distribution
+% in ascending order.
+% For consistency with the SBmcmc and for increased
+% numerical stability., the computation included above
+% compute the cumulative distribution in descending order.
+% See function "ProposalMove" in file 
+% OrderMCMC_SampleDAGsGivenOrder for details.
+
+% Compute the cumulative probability distribution for the
+% new scores structure that satisfies the order constraint.
+for node=1:Nnodes
+     NparentConfig= length(ScoresStructureUnderOrderConstraint{node}.LogBayesScores);
+     ScoresStructureUnderOrderConstraint{node}.CumProb(1)= ...
+     exp(ScoresStructureUnderOrderConstraint{node}.LogBayesScores(1));
+     for nParentConfig=2:NparentConfig
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)= ...
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig-1)+ ...
+         exp(ScoresStructureUnderOrderConstraint{node}.LogBayesScores(nParentConfig));
+     end
+     % Normalization: ascending order
+     % CumProb(1) is the lowest score
+     % CumProb(NparentConfig) is the highest score
+     for nParentConfig=1:NparentConfig
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)= ...
+         ScoresStructureUnderOrderConstraint{node}.CumProb(nParentConfig)/ ...
+         ScoresStructureUnderOrderConstraint{node}.CumProb(NparentConfig);
+     end
+end
+end  % --> if flag_decreasing_order

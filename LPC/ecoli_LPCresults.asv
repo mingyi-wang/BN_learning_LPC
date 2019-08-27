@@ -1,0 +1,65 @@
+
+load ('c:\pdag_ecoli_udag0414_ord3.mat');
+load('c:\pdag_ecoli_dag0414_ord3_full_orient.mat');
+%pdag_ecoli_dag0413_ord3_full_orient.mat
+%[ii,jj]=find(undirected_G~=0);
+[ii,jj]=find(pdag~=0);
+newA=zeros(4345,4345);
+
+% load('c:\reg.tar\reg\reg\reg.mat');
+% A=reg.Atest
+% for i=1:length(A)
+%     for j=1:length(A)
+%         if A(i,j)==1
+%             newi=reg.gidx_4345(i);
+%             newj=reg.gidx_4345(j);
+%             newA(newi,newj)=1;
+%             
+%             
+%         end
+%     end
+%     i
+% end
+fid=fopen('./ecoli_edges_LPC3_0414_fullorder_orient.txt','w');
+load('\constraint_bn\data\ecoli\compendium_E_coli_v3_Build_1.mat');
+% for i=1:length(ii)
+%    if pdag(ii(i),jj(i))==-1
+%      if newA(ii(i),jj(i))==1 
+%       fprintf(fid,'%s\t%s\t%d\t%d\t%f\t%d\t1\n',compendium.genes{compendium.gidx(ii(i))},compendium.genes{compendium.gidx(jj(i))},ii(i),jj(i),zMin(ii(i),jj(i)),pdag(ii(i),jj(i)));
+%        
+%      elseif newA(jj(i),ii(i))==1 
+%       fprintf(fid,'%s\t%s\t%d\t%d\t%f\t%d\t-1\n',compendium.genes{compendium.gidx(ii(i))},compendium.genes{compendium.gidx(jj(i))},ii(i),jj(i),zMin(ii(i),jj(i)),pdag(ii(i),jj(i))); 
+%      else
+%          fprintf(fid,'%s\t%s\t%d\t%d\t%f\t%d\t0\n',compendium.genes{compendium.gidx(ii(i))},compendium.genes{compendium.gidx(jj(i))},ii(i),jj(i),zMin(ii(i),jj(i)),pdag(ii(i),jj(i))); 
+%      end
+%    else
+%      if ii(i)<jj(i)
+%          if newA(ii(i),jj(i))==1 | newA(jj(i),ii(i))==1
+%           fprintf(fid,'%s\t%s\t%d\t%d\t%f\t%d\t2\n',compendium.genes{compendium.gidx(ii(i))},compendium.genes{compendium.gidx(jj(i))},ii(i),jj(i),zMin(ii(i),jj(i)),pdag(ii(i),jj(i)));       
+%          else
+%              fprintf(fid,'%s\t%s\t%d\t%d\t%f\t%d\t0\n',compendium.genes{compendium.gidx(ii(i))},compendium.genes{compendium.gidx(jj(i))},ii(i),jj(i),zMin(ii(i),jj(i)),pdag(ii(i),jj(i)));       
+%          end
+%          
+%      end
+%    end
+%   
+%    i
+% end
+for i=1:length(ii)
+   if pdag(ii(i),jj(i))==-1
+   
+      fprintf(fid,'%s\t%s\t%d\t%d\t%f\t%d\n',compendium.genes{compendium.gidx(ii(i))},compendium.genes{compendium.gidx(jj(i))},ii(i),jj(i),zMin(ii(i),jj(i)),pdag(ii(i),jj(i)));
+       
+   else
+     if ii(i)<jj(i)
+   
+          fprintf(fid,'%s\t%s\t%d\t%d\t%f\t%d\n',compendium.genes{compendium.gidx(ii(i))},compendium.genes{compendium.gidx(jj(i))},ii(i),jj(i),zMin(ii(i),jj(i)),pdag(ii(i),jj(i)));       
+         
+     end
+   end
+  
+   i
+end
+
+fclose(fid);
+    

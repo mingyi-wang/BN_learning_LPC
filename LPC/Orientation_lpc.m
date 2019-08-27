@@ -1,0 +1,346 @@
+function [pdag,sep] = Orientation_lpc(Data, G, sep, k, op, alpha)
+% Orientation_lpc ouput a partially oriented DAG (pattern) from the undirected graph using the orientation rules
+% The numbers of Adjancies are checked 
+%
+% The basic orientation rules are from Meek, C. (1995)
+% Causal inference and causal explanation with background knowledge UAI '95
+% The numbers of Adjancies are checked and are adpate to low-order CI tests 
+%
+% Data is matrix with n*p, n rows means observations and p means the nodes 
+% G is undirected graph learned from learn_struct_lpc
+% sep is cut-sets got from the first phase
+% k is an maximal order of PC algorithm (default: 2), k=-1 no limit on order of CI tests
+% alpha is p value threshold to check the conditional independent (defult: 0.05)
+% op is 1 further higher order (>k) CI tests will be performed, otherwise do not
+% perform perform higher order CI tests
+%
+% Output: pdag in which -1 are directed edges, 1 are undirected edges
+%
+if nargin < 6, cutoff=norminv(1-0.05/2,0,1);
+else
+cutoff=norminv(1-alpha/2,0,1);
+end  
+
+if nargin<5, op=1; end
+if nargin < 4,  k=2; end % The highest order
+
+n=size(Data,2);
+CC=corrcoef(Data);
+% Begin to the Orientation Phase
+% Create the minimal pattern,
+% i.e., the only directed edges are V structures.
+%pdag = G;
+[X, Y] = find(G);
+
+% We want to generate all unique triples x,y,z
+% This code generates x,y,z and z,y,x.
+for i=1:length(X)
+  x = X(i);
+  y = Y(i);
+  Z = find(G(y,:));
+  Z = mysetdiff(Z, x);
+  
+  
+  % V-structures 
+  for z=Z(:)' 
+    if G(x,z)==0
+      if k~=-1
+        nbrsx=find(G(x,:)>0);
+        nbrsx=mysetdiff(nbrsx,y);
+        nbrsy=find(G(y,:)>0);
+        nbrsy=mysetdiff(nbrsy,z);
+        nbrsz=find(G(z,:)>0);
+        nbrsz=mysetdiff(nbrsz,y);
+        if ((length(nbrsx)<=k) | (length(nbrsy)<=k)) & ((length(nbrsy)<=k) | (length(nbrsz)<=k)) 
+          if ~ismember(y, sep{x,z}) & ~ismember(y, sep{z,x})
+            fprintf('%d -> %d <- %d\n', x, y, z);
+            G(x,y) = -1; G(y,x) = 0;
+            G(z,y) = -1; G(y,z) = 0;
+          end
+        else
+          if op==1
+            [I1,G,cut_set]=ci_test(Data, G, CC,k+1,-1, x, y,  cutoff);
+            if I1==1
+              sep{x,y}=cut_set;
+              sep{y,x} =cut_set;
+            end
+            [I2,G,cut_set]=ci_test(Data, G, CC,k+1,-1, z, y,  cutoff);    
+            if I2==1
+               sep{z,y}=cut_set;
+               sep{y,z} =cut_set;
+            end
+            if I1==0 & I2==0 & ~ismember(y, sep{x,z}) & ~ismember(y, sep{z,x})
+              fprintf('%d -> %d <- %d\n', x, y, z);
+              G(x,y) = -1; G(y,x) = 0;
+              G(z,y) = -1; G(y,z) = 0;
+            end
+          end
+        end
+      else
+        if ~ismember(y, sep{x,z}) & ~ismember(y, sep{z,x})
+          fprintf('%d -> %d <- %d\n', x, y, z);
+          G(x,y) = -1; G(y,x) = 0;
+          G(z,y) = -1; G(y,z) = 0;
+        end
+      end
+    end
+  end
+end
+
+% Convert the minimal pattern to a complete one,
+% i.e., every directed edge in P is compelled
+% (must be directed in all Markov equivalent models),
+% and every undirected edge in P is reversible.
+% We use the rules of Pearl (2000) p51 (derived in Meek (1995))
+
+
+pdag=G;
+old_pdag = zeros(n);
+iter = 0;
+while ~isequal(pdag, old_pdag)
+  iter = iter + 1;
+  old_pdag = pdag;
+ 
+  % rule 1
+  [A,B] = find(pdag==-1); % a -> b
+  for i=1:length(A)
+    a = A(i); b = B(i);
+    tmp1=find(pdag(b,:)==1);
+    tmp2=find(pdag(a,:)==0);
+    C=intersect(tmp1,tmp2); % all nodes adj to b but not a
+    if ~isempty(C)
+      for j=1:length(C)
+         if k~=-1
+           nbrsc = length(find(pdag(C(j),:)));
+           nbrsb=length(find(pdag(b,:)));
+           if (nbrsc-1)<=k | (nbrsb-1)<=k
+           %if nbrsc-1<=k
+             pdag(b,C(j)) = -1; pdag(C(j),b) = 0;
+             fprintf('rule 1: a=%d->b=%d and b=%d-c=%d implies %d->%d\n', a, b, b, C(j), b, C(j));
+           else
+             if op==1
+               [I1,pdag,cut_set]=ci_test(Data, pdag,CC, k+1,-1, b, C(j),  cutoff);
+               if I1==1
+                 sep{b,C(j)}=cut_set;
+                 sep{C(j),b} =cut_set;
+               end
+               if I1==0
+                 pdag(b,C(j)) = -1; pdag(C(j),b) = 0;
+                 fprintf('rule 1: a=%d->b=%d and b=%d-c=%d implies %d->%d\n', a, b, b, C(j), b, C(j));
+               end
+             end
+           end
+         else
+            pdag(b,C(j)) = -1; pdag(C(j),b) = 0;
+            fprintf('rule 1: a=%d->b=%d and b=%d-c=%d implies %d->%d\n', a, b, b, C(j), b, C(j)); 
+         end             
+      end      
+    end
+  end
+  
+  % rule 2
+  [A,B] = find(pdag==1); % unoriented a-b edge
+  for i=1:length(A)
+    a = A(i); b = B(i);
+    if pdag(a,b)==1  % to check if they are still connected, might be disconnected in the previous round
+      tmp1=find(pdag(a,:)==-1);
+      tmp2=find(pdag(:,b)==-1);
+      tmp3=intersect(tmp1,tmp2);
+      if ~isempty(tmp3)
+        if k~=-1
+          nbrsa=length(find(pdag(a,:)>0));
+          nbrsb=length(find(pdag(b,:)>0));
+          if ((nbrsa-1)<=k) | ((nbrsb-1)<=k)
+            pdag(a,b) = -1; pdag(b,a) = 0;
+            fprintf('rule 2: %d -> %d\n', a, b);
+          else
+            if op==1
+              [I1,pdag,cut_set]=ci_test(Data, pdag,CC, k+1,-1, a, b,  cutoff);  
+              if I1==1
+                sep{b,a}=cut_set;
+                sep{a,b} =cut_set;
+              end
+              if I1==0
+                pdag(a,b) = -1; pdag(b,a) = 0;
+                fprintf('rule 2: %d -> %d\n', a, b);  
+              end
+            end
+          end
+        else
+          pdag(a,b) = -1; pdag(b,a) = 0;
+          fprintf('rule 2: %d -> %d\n', a, b);    
+        end
+      end
+    end
+  end
+  
+  
+  % rule 3
+  
+  [A,B] = find(pdag==1); % a-b
+  for i=1:length(A)
+    a = A(i); b = B(i);
+    %if pdag(a,b)==1
+    if k~=-1
+      nbrsa=length(find(pdag(a,:)>0));
+      nbrsb=length(find(pdag(b,:)>0));
+      if ((nbrsa-1)<=k) | ((nbrsb-1)<=k)
+        tmp1=find(pdag(a,:)==1);
+        tmp2=find(pdag(:,b)==-1);
+        C=intersect(tmp1,tmp2);
+        
+        % C contains nodes c s.t. a-c->b(or a)
+        if length(C)>1
+          SS = subsets1(C, 2);
+          for si=1:length(SS)
+            S=SS{si};
+            if pdag(S(1),S(2))==0
+               nbrs1=length(find(pdag(S(1),:)>0));
+               nbrs2=length(find(pdag(S(2),:)>0));
+               if (((nbrs1-1)<=k) | ((nbrsa-1)<=k)) & (((nbrs2-1)<=k) | ((nbrsa-1)<=k))
+                   pdag(a,b) = -1; pdag(b,a) = 0;
+                   fprintf('rule 3: %d -> %d\n', a, b);
+                   break;
+               end
+            end
+          end
+        end
+      end
+    else
+      tmp1=find(pdag(a,:)==1);
+      tmp2=find(pdag(:,b)==-1);
+      C=intersect(tmp1,tmp2);
+        
+        % C contains nodes c s.t. a-c->b(or a)
+      if length(C)>1
+        SS = subsets1(C, 2);
+        for si=1:length(SS)
+          S=SS{si};
+          if pdag(S(1),S(2))==0
+            pdag(a,b) = -1; pdag(b,a) = 0;
+            fprintf('rule 3: %d -> %d\n', a, b);
+            break;
+          end
+        end
+      end
+    end
+    %end
+  end 
+  
+  
+  %rule 4
+  [A,B] = find(pdag==1); % a-b
+  for i=1:length(A)
+    found=0;
+    a = A(i); b = B(i);
+    
+    if pdag(a,b)==1
+    if k==-1
+        tmp1=find(pdag(a,:)==1);
+        for j=1:length(tmp1)
+          tmp2=find(pdag(tmp1(j),:)==-1);
+          for l=1:length(tmp2)
+              if pdag(tmp2(l),b)==-1  & (pdag(tmp2(l),a)~=0 | pdag(a,tmp2(l))~=0)
+                 pdag(a,b) = -1; pdag(b,a) = 0;
+                 fprintf('rule 4: %d -> %d\n', a, b);  
+                 found=1;
+                 break;
+              end
+          end
+          if found==1
+            break;
+          end
+        end      
+    else
+      nbrsa=length(find(pdag(a,:)>0));
+      nbrsb=length(find(pdag(b,:)>0));
+      if ((nbrsa-1)<=k) | ((nbrsb-1)<=k)
+         tmp1=find(pdag(a,:)==1);
+         for j=1:length(tmp1)
+           tmp2=find(pdag(tmp1(j),:)==-1);
+           for l=1:length(tmp2)
+              if pdag(tmp2(l),b)==-1  & (pdag(tmp2(l),a)~=0 | pdag(a,tmp2(l))~=0)
+                 if pdag(tmp2(l),a)==1
+                    nbrs1=length(find(pdag(tmp2(l),:)>0));
+                    if ((nbrs1-1)<=k) | ((nbrsa-1)<=k)
+                      pdag(a,b) = -1; pdag(b,a) = 0;
+                      fprintf('rule 4: %d -> %d\n', a, b);
+                      break;
+                    end                     
+                 else
+                   pdag(a,b) = -1; pdag(b,a) = 0;
+                   fprintf('rule 4: %d -> %d\n', a, b);  
+                   found=1;
+                   break;
+                 end
+              end
+           end
+           if found==1
+              break;
+           end 
+         end
+      end  
+    end
+    end
+  end
+      
+end 
+  
+
+
+end
+
+function [I,G,sep]=ci_test(Data,  G,CC, ord,k, x, y, cutoff)
+   %ord is the lowest order of CI tests will be conducted
+   %k is the highest order of CI tests need to be tested; k=-1 no
+   %limitation on order
+   % 
+   % output: I=1 means x and y are d-separated
+   %        I=0 means x and y are d-connected
+   %
+   sep=[];
+   done=0;
+   I=0;
+   
+   n=size(Data,1);  
+   while ~done  
+     nbrsx=union(find(G(x,:)~=0),find(G(:,x)~=0));
+     nbrsy=union(find(G(y,:)~=0),find(G(:,y)~=0));
+     if length(nbrsx)>length(nbrsy )
+        nbrs=nbrsy;
+     else
+        nbrs=nbrsx;
+     end
+     done=1;
+     nbrs = mysetdiff(nbrs, x);  % bug fix by Raanan Yehezkel <raanany@ee.bgu.ac.il> 6/27/04
+     nbrs=mysetdiff(nbrs,y);
+     if length(nbrs) >= ord & G(x,y) ~= 0
+       done = 0;
+       %SS = subsets(nbrs, ord, ord); % all subsets of size ord
+       SS = subsets1(nbrs, ord);
+       for si=1:length(SS)
+	     S = SS{si};
+	     %if feval(cond_indep, x, y, S, varargin{:})
+         %[I,chi2,p] = cond_indep_chisquare(x, y, S, Data,test,alpha);
+         %[rho,p]=partialcorr(Data(:,x),Data(:,y),Data(:,S));
+         [z,r]=zStat(x,y,S,CC,n);
+         if abs(z)<cutoff 
+           fprintf('%d indep of %d given ', x, y); fprintf('%d ', S);
+           fprintf('\n');
+           G(x,y) = 0;
+	       G(y,x) = 0;
+	       sep = myunion(sep, S);
+           I=1;
+           done=1;
+           break;
+         end
+       end
+     end
+     ord = ord + 1;
+     if (ord>k) && (k~=-1)
+       done=1;
+       fprintf('order=%d\n',ord);
+     end 
+   end
+ end
+      

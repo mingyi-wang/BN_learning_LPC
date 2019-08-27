@@ -1,0 +1,444 @@
+% Performance comparisons for synthetic tests
+% Must run bn, pc, rn, lpc and ggm tests first
+% AUC(PvsR) and TP for fixed FP were plot out
+n_rec = 10; 
+n_genes = 100;
+max_alpha = 0.05;
+FP_limit = round(n_genes / 5); % number of FP for TP_for_fixed_FP
+ss=[10 20 50 100 200 500 1000];
+output_directory = '../data/data_100genes/';
+output_ggm_directory = '../results/ggm/';
+output_lowpc_directory = '../results/lpc/';
+output_bn_directory='../results/bn/';
+output_pc_directory='../results/pc/';
+output_rn_directory='../results/rn/';
+
+filenames_start = [num2str(n_genes) 'g_' num2str(n_rec) 'rec'];
+
+% Here starts the code
+if output_directory & output_directory(end) ~= '/'
+	output_directory = [output_directory '/'];
+end
+n_ss = numel(ss);
+
+AUC_ROC_ggm = zeros(n_rec, n_ss);
+AUC_ROC_lowpc = zeros(n_rec, n_ss);
+AUC_ROC_lowpc_oldcc = zeros(n_rec, n_ss);
+AUC_ROC_bn=zeros(n_rec,n_ss);
+AUC_ROC_pc=zeros(n_rec,n_ss);
+AUC_ROC_rn=zeros(n_rec,n_ss);
+
+pAUC_ROC_ggm = zeros(n_rec, n_ss);
+pAUC_ROC_lowpc = zeros(n_rec, n_ss);
+pAUC_ROC_lowpc_oldcc = zeros(n_rec, n_ss);
+pAUC_ROC_bn=zeros(n_rec,n_ss);
+pAUC_ROC_pc=zeros(n_rec,n_ss);
+pAUC_ROC_rn=zeros(n_rec,n_ss);
+
+AUC_PvsR_ggm = zeros(n_rec, n_ss);
+AUC_PvsR_lowpc = zeros(n_rec, n_ss);
+AUC_PvsR_lowpc_oldcc = zeros(n_rec, n_ss);
+AUC_PvsR_bn=zeros(n_rec,n_ss);
+AUC_PvsR_pc=zeros(n_rec,n_ss);
+AUC_PvsR_rn=zeros(n_rec,n_ss);
+
+TP_ggm = zeros(n_rec, n_ss);
+TP_lowpc = zeros(n_rec, n_ss);
+TP_lowpc_oldcc = zeros(n_rec, n_ss);
+TP_bn = zeros(n_rec, n_ss);
+TP_rn = zeros(n_rec, n_ss);
+TP_pc = zeros(n_rec, n_ss);
+
+for i = 1:n_rec
+	i
+    A=dlmread([output_directory filenames_start '_A_' num2str(i) '.txt'],'\t');
+    A_undir = A | A'; % the undirected matrix used to measure TP, FP,...
+    for j=1:n_ss
+        j
+       w_ggm=dlmread([output_ggm_directory filenames_start '_x_' num2str(i) '_' num2str(ss(j)) '_ggm.txt'],'\t');
+       w_ggm=abs(w_ggm);
+       load([output_lowpc_directory filenames_start '_x_' num2str(i) '_' num2str(ss(j)) '_lpc_ord2.mat']);
+       w_lowpc_oldcc=zMin;
+
+       load([output_bn_directory filenames_start '_x_' num2str(i) '_' num2str(ss(j)) '_bn.mat']);
+       cd('../BN/DGeUGe/');
+      % DAGmDGE=media(DAGs,1);
+       DAGmUGE=media_UGE(DAGs);
+       cd('../../LPC/');
+        load([output_rn_directory filenames_start '_x_' num2str(i) '_' num2str(ss(j)) '_rn.mat']);
+        w_rn=RelPe;
+        
+        w_pc=dlmread([output_pc_directory filenames_start '_x_' num2str(i) '_' num2str(ss(j)) '_pc.txt'],'\t');
+        [AUC_ROC_ggm(i, j) pAUC_ROC_ggm(i, j) AUC_PvsR_ggm(i,j)] = AUCs(w_ggm, A_undir, [], max_alpha);
+        [AUC_ROC_lowpc_oldcc(i, j) pAUC_ROC_lowpc_oldcc(i, j) AUC_PvsR_lowpc_oldcc(i,j)] = AUCs(w_lowpc_oldcc, A_undir, [], max_alpha);
+        [AUC_ROC_bn(i, j) pAUC_ROC_bn(i, j) AUC_PvsR_bn(i,j)] = AUCs(DAGmUGE, A_undir, 0, max_alpha);
+        [AUC_ROC_pc(i, j) pAUC_ROC_pc(i, j) AUC_PvsR_pc(i,j)] = AUCs(w_pc, A_undir, 0, max_alpha);
+        [AUC_ROC_rn(i, j) pAUC_ROC_rn(i, j) AUC_PvsR_rn(i,j)] = AUCs(w_rn, A_undir, 0, max_alpha);
+        
+        
+        TP_ggm(i, j) = TP_for_fixed_FP(w_ggm, A_undir, FP_limit);
+        TP_lowpc_oldcc(i,j)= TP_for_fixed_FP(w_lowpc_oldcc,A_undir,FP_limit);
+         TP_bn(i,j)=TP_for_fixed_FP(DAGmUGE,A_undir,FP_limit);
+        TP_pc(i,j)= TP_for_fixed_FP(w_pc,A_undir,FP_limit);
+        TP_rn(i,j)= TP_for_fixed_FP(w_rn,A_undir,FP_limit);
+        
+
+	end
+end
+s=[10 20 50 100 200 500 1000];
+
+fname3=sprintf('%s%s%s','..\results\lpc\SHD_results.txt');
+fname4=sprintf('%s%s%s','..\results\pc\SHD_results.txt');
+fname5=sprintf('%s%s%s','..\results\bn\SHD_results.txt');
+fid=fopen(fname3,'w+');
+fprintf(fid,'num, predicted_edge_num,true, M.O., E.A., M.A., W.O., SHD\n');
+
+fid1=fopen(fname4,'w+');
+fprintf(fid1,'num, predicted_edge_num,true, M.O., E.A., M.A., W.O., SHD\n');
+
+fid2=fopen(fname5,'w+');
+%fprintf(fid2,'num, true, M.O., E.A., M.A., SHD\n');
+num_a = zeros(2,10);
+num_edges=zeros(2,10);
+num_true = zeros(2,10);
+num_mo = zeros(2,10);
+num_ea = zeros(2,10);
+num_ma = zeros(2,10);
+num_wo = zeros(2,10);
+num_shd = zeros(2,10);
+precision=zeros(2,10);
+recall=zeros(2,10);
+acc=zeros(2,10);
+
+num_a1 = zeros(2,10);
+num_edges1=zeros(2,10);
+num_true1 = zeros(2,10);
+num_mo1 = zeros(2,10);
+num_ea1 = zeros(2,10);
+num_ma1 = zeros(2,10);
+num_wo1 = zeros(2,10);
+num_shd1 = zeros(2,10);
+precision1=zeros(2,10);
+recall1=zeros(2,10);
+acc1=zeros(2,10);
+
+num_a2 = zeros(7,10);
+num_edges2=zeros(7,10);
+num_true2 = zeros(7,10);
+num_mo2 = zeros(7,10);
+num_ea2 = zeros(7,10);
+num_ma2 = zeros(7,10);
+num_wo2 = zeros(7,10);
+num_shd2 = zeros(7,10);
+precision2=zeros(7,10);
+recall2=zeros(7,10);
+acc2=zeros(7,10);
+
+for i=1:7
+    for j=1:10
+    %fname2=sprintf('%s%d%s%d%s','H:\buf\NetRec\100g_10rec_scale-free_A_',j,'.mat');
+    fname2=sprintf('%s%d%s','..\data\data_100genes\100g_10rec_A_',j,'.txt');
+    A=dlmread(fname2,'\t');
+    [ii,jj]=find(A~=0);
+    for kkk=1:length(ii)
+        if A(ii(kkk),jj(kkk))==-1
+          A(ii(kkk),jj(kkk))=1;          
+        end
+    end
+%    A= dag_to_cpdag(A);
+    fname1= sprintf('%s%d%s%d%s','..\results\lpc\100g_10rec_x_',j,'_',s(i),'_lpc_ord2.mat');
+%     fname1= sprintf('%s%s%s%d%s%d','H:\buf\NetRec\data\pc\100g_10rec_',type,'_x_',j,'_',s(i),'_PC_oldcc.mat');
+%     fname1= sprintf('%s%s%s%d%s%d','H:\buf\NetRec\data\lowpc\100g_10rec_',type,'_x_',j,'_',s(i),'_lowPC_oldcc_ord2.mat');
+    fname6= sprintf('%s%d%s%d%s','..\results\pc\100g_10rec_x_',j,'_',s(i),'_cpdag.txt');
+%    fname6= sprintf('%s%s%s%d%s%d','H:\buf\NetRec\data\pc\100g_10rec_',type,'_x_',j,'_',s(i),'_PC_oldcc.mat');
+    fname_bn=sprintf('%s%d%s%d%s','..\results\bn\100g_10rec_x_',j,'_',s(i),'_bn.mat');
+
+%    [ii,jj]=find(A==-1);
+%    for k=1:length(ii)
+%       A(ii(k),jj(k))=1;
+%    end
+   load(fname1);
+   pdag(find(pdag==1))=2;
+   pdag(find(pdag==-1))=1;
+   eg=dag_to_essential_graph(A);
+
+  
+   [num_a(i,j),num_edges(i,j),num_true(i,j),num_mo(i,j),num_ea(i,j),num_ma(i,j),num_wo(i,j),num_shd(i,j)]=compare_graphs(pdag,eg);
+   %[num_a(i,j),num_edges(i,j),num_true(i,j),num_mo(i,j),num_ea(i,j),num_ma(i,j),num_wo(i,j),num_shd(i,j),recall(i,j),precision(i,j),acc(i,j)]=compare_g(CPDAG,A);
+%   load(fname6);
+    pdag=dlmread(fname6,'\t');
+    [ii,jj]=find(pdag==1);
+    for k=1:length(ii)
+        if ii(k)<jj(k)
+        if pdag(jj(k),ii(k))==1
+       
+          pdag(ii(k),jj(k))=2;
+          pdag(jj(k),ii(k))=2; 
+        end
+        end
+    end
+    [num_a1(i,j),num_edges1(i,j),num_true1(i,j),num_mo1(i,j),num_ea1(i,j),num_ma1(i,j),num_wo1(i,j),num_shd1(i,j)]=compare_graphs(pdag,eg);
+    load(fname_bn);
+    cd('../BN/DGeUGe/');
+    DAG_bn=media(DAGs,1);
+    DAG_bn(find(DAG_bn>0.2))=1;
+    DAG_bn(find(DAG_bn<=0.2))=0;
+    [ii,jj]=find(DAG_bn==1);
+    for k=1:length(ii)
+       if DAG_bn(jj(k),ii(k))==1 
+          DAG_bn(jj(k),ii(k))=2;
+          DAG_bn(ii(k),jj(k))=2;
+       end
+    end
+    cd('../../LPC');
+    [num_a2(i,j),num_edges2(i,j),num_true2(i,j),num_mo2(i,j),num_ea2(i,j),num_ma2(i,j),num_wo2(i,j),num_shd2(i,j)]=compare_graphs(DAG_bn,eg);
+    i
+    j
+  
+   fprintf(fid,'%d, %d, %d, %d, %d, %d, %d,  %d \n',num_a(i,j),num_edges(i,j),num_true(i,j),num_mo(i,j),num_ea(i,j),num_ma(i,j),num_wo(i,j),num_shd(i,j));
+   fprintf(fid1,'%d, %d, %d, %d, %d, %d, %d,%d\n',num_a1(i,j),num_edges1(i,j),num_true1(i,j),num_mo1(i,j),num_ea1(i,j),num_ma1(i,j),num_wo1(i,j),num_shd1(i,j));
+    fprintf(fid2,'%d, %d, %d, %d, %d, %d, %d,%d, %f,%f, %f\n',num_a2(i,j),num_edges2(i,j),num_true2(i,j),num_mo2(i,j),num_ea2(i,j),num_ma2(i,j),num_wo2(i,j),num_shd2(i,j));
+   end
+   fprintf(fid,'\n');
+   fprintf(fid1,'\n');
+    fprintf(fid2,'\n'); 
+end
+fclose(fid);
+fclose(fid1);
+ fclose(fid2);
+
+num_mo=num_mo+num_wo;
+%mean_num_a=mean(num_a,2);
+%mean_num_true=mean(num_true,2);
+mean_num_mo=mean(num_mo,2);
+mean_num_ea=mean(num_ea,2);
+mean_num_ma=mean(num_ma,2);
+mean_num_shd=mean(num_shd,2);
+%mean_num_wo=mean(num_wo,2);
+
+
+%std_num_a=std(num_a,0,2);
+%std_num_true=std(num_true,0,2);
+std_num_mo=std(num_mo,0,2);
+std_num_ea=std(num_ea,0,2);
+std_num_ma=std(num_ma,0,2);
+std_num_shd=std(num_shd,0,2);
+%std_num_wo=std(num_wo,0,2);
+
+num_mo1=num_mo1+num_wo1;
+%mean_num_a1=mean(num_a1,2);
+%mean_num_true1=mean(num_true1,2);
+mean_num_mo1=mean(num_mo1,2);
+mean_num_ea1=mean(num_ea1,2);
+mean_num_ma1=mean(num_ma1,2);
+mean_num_shd1=mean(num_shd1,2);
+%mean_num_wo1=mean(num_wo1,2);
+
+%std_num_a1=std(num_a1,0,2);
+%std_num_true1=std(num_true1,0,2);
+std_num_mo1=std(num_mo1,0,2);
+std_num_ea1=std(num_ea1,0,2);
+std_num_ma1=std(num_ma1,0,2);
+std_num_shd1=std(num_shd1,0,2);
+
+
+num_mo2=num_mo2+num_wo2;
+%mean_num_a1=mean(num_a1,2);
+%mean_num_true1=mean(num_true1,2);
+mean_num_mo2=mean(num_mo2,2);
+mean_num_ea2=mean(num_ea2,2);
+mean_num_ma2=mean(num_ma2,2);
+mean_num_shd2=mean(num_shd2,2);
+%mean_num_wo1=mean(num_wo1,2);
+
+%std_num_a1=std(num_a1,0,2);
+%std_num_true1=std(num_true1,0,2);
+std_num_mo2=std(num_mo2,0,2);
+std_num_ea2=std(num_ea2,0,2);
+std_num_ma2=std(num_ma2,0,2);
+std_num_shd2=std(num_shd2,0,2);
+% clear A A_undir V theta h lambda x xr W_*
+% 
+% time_corr_mean = mean(time_corr, 1);
+% time_corr_std = std(time_corr, 0, 1);
+% time_o1pcorr_mean = mean(time_o1pcorr, 1);
+% time_o1pcorr_std = std(time_o1pcorr, 0, 1);
+% time_o2pcorr_mean = mean(time_o2pcorr, 1);
+% time_o2pcorr_std = std(time_o2pcorr, 0, 1);
+% time_ggm_mean = mean(time_ggm, 1);
+% time_ggm_std = std(time_ggm, 0, 1);
+% time_MI_mean = mean(time_MI, 1);
+% time_MI_std = std(time_MI, 0, 1);
+% time_minMI_mean = mean(time_minMI, 1);
+% time_minMI_std = std(time_minMI, 0, 1);
+% time_DPI_mean = mean(time_DPI, 1);
+% time_DPI_std = std(time_DPI, 0, 1);
+% 
+% AUC_ROC_corr_mean = mean(AUC_ROC_corr, 1);
+% AUC_ROC_corr_std = std(AUC_ROC_corr, 0, 1);
+% AUC_ROC_o1pcorr_mean = mean(AUC_ROC_o1pcorr, 1);
+% AUC_ROC_o1pcorr_std = std(AUC_ROC_o1pcorr, 0, 1);
+% AUC_ROC_o2pcorr_mean = mean(AUC_ROC_o2pcorr, 1);
+% AUC_ROC_o2pcorr_std = std(AUC_ROC_o2pcorr, 0, 1);
+ AUC_ROC_ggm_mean = mean(AUC_ROC_ggm, 1);
+ AUC_ROC_ggm_std = std(AUC_ROC_ggm, 0, 1);
+ %AUC_ROC_lowpc_mean = mean(AUC_ROC_lowpc, 1);
+ %AUC_ROC_lowpc_std = std(AUC_ROC_lowpc, 0, 1);
+ AUC_ROC_lowpc_oldcc_mean = mean(AUC_ROC_lowpc_oldcc, 1);
+ AUC_ROC_lowpc_oldcc_std = std(AUC_ROC_lowpc_oldcc, 0, 1);
+ AUC_ROC_bn_mean = mean(AUC_ROC_bn, 1);
+ AUC_ROC_bn_std = std(AUC_ROC_bn, 0, 1);
+  AUC_ROC_pc_mean = mean(AUC_ROC_pc, 1);
+  AUC_ROC_pc_std = std(AUC_ROC_pc, 0, 1);
+  AUC_ROC_rn_mean = mean(AUC_ROC_rn, 1);
+  AUC_ROC_rn_std = std(AUC_ROC_rn, 0, 1);
+% AUC_ROC_minMI_mean = mean(AUC_ROC_minMI, 1);
+% AUC_ROC_minMI_std = std(AUC_ROC_minMI, 0, 1);
+% AUC_ROC_DPI_mean = mean(AUC_ROC_DPI, 1);
+% AUC_ROC_DPI_std = std(AUC_ROC_DPI, 0, 1);
+% 
+% pAUC_ROC_corr_mean = mean(pAUC_ROC_corr, 1);
+% pAUC_ROC_corr_std = std(pAUC_ROC_corr, 0, 1);
+% pAUC_ROC_o1pcorr_mean = mean(pAUC_ROC_o1pcorr, 1);
+% pAUC_ROC_o1pcorr_std = std(pAUC_ROC_o1pcorr, 0, 1);
+% pAUC_ROC_o2pcorr_mean = mean(pAUC_ROC_o2pcorr, 1);
+% pAUC_ROC_o2pcorr_std = std(pAUC_ROC_o2pcorr, 0, 1);
+ pAUC_ROC_ggm_mean = mean(pAUC_ROC_ggm, 1);
+ pAUC_ROC_ggm_std = std(pAUC_ROC_ggm, 0, 1);
+%  pAUC_ROC_lowpc_mean = mean(pAUC_ROC_lowpc, 1);
+%  pAUC_ROC_lowpc_std = std(pAUC_ROC_lowpc, 0, 1);
+ pAUC_ROC_lowpc_oldcc_mean = mean(pAUC_ROC_lowpc_oldcc, 1);
+ pAUC_ROC_lowpc_oldcc_std = std(pAUC_ROC_lowpc_oldcc, 0, 1);
+  pAUC_ROC_bn_mean = mean(pAUC_ROC_bn, 1);
+  pAUC_ROC_bn_std = std(pAUC_ROC_bn, 0, 1);
+   pAUC_ROC_rn_mean = mean(pAUC_ROC_rn, 1);
+  pAUC_ROC_rn_std = std(pAUC_ROC_rn, 0, 1);
+  pAUC_ROC_pc_mean = mean(pAUC_ROC_pc, 1);
+  pAUC_ROC_pc_std = std(pAUC_ROC_pc, 0, 1);
+% pAUC_ROC_minMI_mean = mean(pAUC_ROC_minMI, 1);
+% pAUC_ROC_minMI_std = std(pAUC_ROC_minMI, 0, 1);
+% pAUC_ROC_DPI_mean = mean(pAUC_ROC_DPI, 1);
+% pAUC_ROC_DPI_std = std(pAUC_ROC_DPI, 0, 1);
+% 
+% AUC_PvsR_corr_mean = mean(AUC_PvsR_corr, 1);
+% AUC_PvsR_corr_std = std(AUC_PvsR_corr, 0, 1);
+% AUC_PvsR_o1pcorr_mean = mean(AUC_PvsR_o1pcorr, 1);
+% AUC_PvsR_o1pcorr_std = std(AUC_PvsR_o1pcorr, 0, 1);
+% AUC_PvsR_o2pcorr_mean = mean(AUC_PvsR_o2pcorr, 1);
+% AUC_PvsR_o2pcorr_std = std(AUC_PvsR_o2pcorr, 0, 1);
+ AUC_PvsR_ggm_mean = mean(AUC_PvsR_ggm, 1);
+ AUC_PvsR_ggm_std = std(AUC_PvsR_ggm, 0, 1);
+%  AUC_PvsR_lowpc_mean = mean(AUC_PvsR_lowpc, 1);
+%  AUC_PvsR_lowpc_std = std(AUC_PvsR_lowpc, 0, 1);
+ AUC_PvsR_lowpc_oldcc_mean = mean(AUC_PvsR_lowpc_oldcc, 1);
+ AUC_PvsR_lowpc_oldcc_std = std(AUC_PvsR_lowpc_oldcc, 0, 1);
+ AUC_PvsR_bn_mean = mean(AUC_PvsR_bn, 1);
+ AUC_PvsR_bn_std = std(AUC_PvsR_bn, 0, 1);
+  AUC_PvsR_rn_mean = mean(AUC_PvsR_rn, 1);
+  AUC_PvsR_rn_std = std(AUC_PvsR_rn, 0, 1);
+  AUC_PvsR_pc_mean = mean(AUC_PvsR_pc, 1);
+  AUC_PvsR_pc_std = std(AUC_PvsR_pc, 0, 1);
+% AUC_PvsR_minMI_mean = mean(AUC_PvsR_minMI, 1);
+% AUC_PvsR_minMI_std = std(AUC_PvsR_minMI, 0, 1);
+% AUC_PvsR_DPI_mean = mean(AUC_PvsR_DPI, 1);
+% AUC_PvsR_DPI_std = std(AUC_PvsR_DPI, 0, 1);
+% 
+ TP_ggm_mean = mean(TP_ggm, 1);
+ TP_ggm_std = std(TP_ggm, 0, 1);
+%  TP_lowpc_mean = mean(TP_lowpc, 1);
+%  TP_lowpc_std = std(TP_lowpc, 0, 1);
+ TP_lowpc_oldcc_mean = mean(TP_lowpc_oldcc, 1);
+ TP_lowpc_oldcc_std = std(TP_lowpc_oldcc, 0, 1);
+ TP_rn_mean = mean(TP_rn, 1);
+ TP_rn_std = std(TP_rn, 0, 1);
+ TP_pc_mean = mean(TP_pc, 1);
+ TP_pc_std = std(TP_pc, 0, 1);
+ TP_bn_mean = mean(TP_bn, 1);
+ TP_bn_std = std(TP_bn, 0, 1);
+% TP_minMI_mean = mean(TP_minMI, 1);
+% TP_minMI_std = std(TP_minMI, 0, 1);
+% TP_DPI_mean = mean(TP_DPI, 1);
+% TP_DPI_std = std(TP_DPI, 0, 1);
+% 
+figure 
+
+subplot(2,3,1)
+xlim([0 800])
+
+ss=100:100:700;
+% s1=s;
+s=100:100:700;
+set(gca,'XTick',0:100:800 ,'XTickLabel',{'','10','20','50','100','200','500','1000',''},'fontsize',12); 
+%set(gca,'XTickLabel',{'-pi','-pi/2','0','pi/2','pi'})
+	hold all
+    plot(ss, AUC_PvsR_lowpc_oldcc_mean, '-+', 'Color', 'red')
+	plot(ss, AUC_PvsR_ggm_mean, '-d','color',[0 1 1])
+    plot(ss, AUC_PvsR_bn_mean, '-xb')
+    plot(ss, AUC_PvsR_rn_mean, '-o','Color',[1 0 1])
+    plot(ss, AUC_PvsR_pc_mean, '-v','color',[0 0.5 0.3])
+	xlabel('Sample Sizes')
+	ylabel('AUC(PvsR)')
+    grid on;
+	title('(a)')
+
+ 	
+    subplot(2,3,4)
+    xlim([0 800])
+    set(gca,'XTick',0:100:800 ,'XTickLabel',{'','10','20','50','100','200','500','1000',''},'fontsize',12); 
+ 	hold all 
+    plot(ss, TP_lowpc_oldcc_mean, '-+', 'Color', 'red')
+ 	plot(ss, TP_ggm_mean, '-d','color',[0 1 1])
+ 	plot(ss, TP_bn_mean, '-xb')
+    plot(ss, TP_rn_mean, '-o','Color',[1 0 1])
+ 	plot(ss, TP_pc_mean, '-v','color',[0 0.5 0.3])
+ 	xlabel('Sample Sizes')
+ 	ylabel('TP for FP=20')
+ 	title('(b)')
+    legend('LPC','GGM','BN','RN','PC','Location','Northwest');
+    grid on;
+    subplot(2,3,2);
+    xlim([0 800])
+    set(gca,'XTick',0:100:800 ,'XTickLabel',{'','10','20','50','100','200','500','1000',''},'fontsize',12); 
+ 	hold all
+ 	errorbar(s, mean_num_shd, std_num_shd, '-+r')
+ 	errorbar(s, mean_num_shd1,std_num_shd1, '-v','color',[0 0.5 0.3])
+    errorbar(s, mean_num_shd2,std_num_shd2, '-xb')
+    grid on;
+ 	xlabel('Sample Sizes')
+ 	ylabel('Total number of structual errors')
+ 	title('(c)')
+    
+    subplot(2,3,3);
+   xlim([0 800])
+set(gca,'XTick',0:100:800 ,'XTickLabel',{'','10','20','50','100','200','500','1000',''},'fontsize',12); 
+ 	hold all
+ 	errorbar(s, mean_num_ea, std_num_ea,'-+r')
+ 	errorbar(s, mean_num_ea1,std_num_ea1, '-v','color',[0 0.5 0.3])
+    errorbar(s, mean_num_ea2,std_num_ea2,'-xb')
+ 	xlabel('Sample Sizes')
+ 	ylabel('Number of extra arcs')
+ 	title('(d)')
+    grid on;
+    subplot(2,3,5);
+    xlim([0 800])
+set(gca,'XTick',0:100:800 ,'XTickLabel',{'','10','20','50','100','200','500','1000',''},'fontsize',12); 
+ 	hold all
+ 	errorbar(s, mean_num_ma, std_num_ma,'-+r')
+ 	errorbar(s, mean_num_ma1,std_num_ma1, '-v','color',[0 0.5 0.3])
+    errorbar(s, mean_num_ma2,std_num_ma2, '-xb')
+ 	xlabel('Sample Sizes')
+ 	ylabel('Number of missing arcs')
+ 	title('(e)')
+    grid on;
+    subplot(2,3,6);
+    xlim([0 800])
+set(gca,'XTick',0:100:800 ,'XTickLabel',{'','10','20','50','100','200','500','1000',''},'fontsize',12); 
+ 	hold all
+ 	errorbar(s, mean_num_mo,std_num_mo, '-+r')
+ 	errorbar(s, mean_num_mo1, std_num_mo1,'-v','color',[0 0.5 0.3])
+    errorbar(s, mean_num_mo2, std_num_mo2,'-xb')
+ 	xlabel('Sample Sizes')
+ 	ylabel('Number of arcs with reversed or no directions')
+ 	title(['(f)'])
+    grid on;
+legend('LPC','PC','BN','Location','Northwest');

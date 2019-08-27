@@ -1,0 +1,36 @@
+function test_sim_all_ord_orient
+
+s=[10 20 50 100 200 500 1000];
+genes=100;
+ord=-1;
+for j=1:10
+  for i=1:7
+     pdag=cell(10,1);
+    
+      fname= sprintf('%s%d%s%d%s%d%s%d%s','..\data\data_',genes,'genes\',genes,'g_10rec_x_',j,'_',s(i),'measurements.txt');
+      fname1= sprintf('%s%d%s%d%s%d%s','..\results\lpc\',genes,'g_10rec_x_',j,'_',s(i),'_lpc_ug_all_ord.mat');
+      fname2= sprintf('%s%d%s%d%s%d%s%d%s','..\results\lpc\',genes,'g_10rec_x_',j,'_',s(i),'_lpc_all_ord_pdags.mat');
+      x=dlmread(fname,'\t');
+      load(fname1);
+      for k=1:10
+%    [undirected_G,sep,zMin,ci_num] = learn_struct_lpc_for_test(x, ord, 0.05);
+      if length(undirected_G{k})>0
+      [pdag{k,1}] = Orientation_lpc(x, undirected_G{k}, sep{k},k, 0, 0.05);
+%     [ii,jj]=find(pdag==1);
+%     for k=1:length(ii)
+%        pdag(ii(k),jj(k))=2;
+%     end
+%     [ii,jj]=find(pdag==-1);
+%     for k=1:length(ii)
+%        pdag(ii(k),jj(k))=1;
+%     end
+      end
+      k
+      end
+   save(fname2,'pdag');
+    i
+    j
+    
+  end
+end
+end

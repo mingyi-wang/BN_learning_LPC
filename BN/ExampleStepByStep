@@ -1,0 +1,36 @@
+Unzip the file SoftwareForPaper.zip
+
+You should find four different folders:
+GaussianScores
+GaussianScoresIntervention
+MCMCOrder
+DGeUGe
+RelevanceNetworks
+
+****************
+MCMC Order
+****************
+
+First of all go to the folder GaussianScores and open the file
+exampleGaussianScores.m
+When you execute this file you will be calculating the BGe scores
+for the first data set that was generated from a multivariate gaussian.
+This scores are then saved in a file called SCORESexample.mat
+
+The second step is to run the MCMC.
+Go to the folder MCMCOrder and open the file ExampleMCMCOrder.m
+This file will run the order MCMC and will provide a file called
+ResultsExample where all the MCMC results are stored.
+
+The third and last step is to go to the folder DGEUGE and run
+the file exampleDGEUGE.
+This will load the results and provide the AUC values and ROC curves
+for DGE and UGE.
+
+
+*********************
+Relevance Networks
+*********************
+Open the folder RelevanceNetoworks.
+See the file ExampleRNs.m for and example.
+

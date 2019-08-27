@@ -1,0 +1,101 @@
+
+
+######################################################################
+#  How to use the order MCMC software and calculate the AUC scores   #
+######################################################################
+
+************************************************************************************
+* For an step by step example see the file ExampleStepbyStep, there you will find  *
+* an example about Relevance networks as well.                                     * 
+************************************************************************************
+
+
+
+
+
+*********************************************
+Calculating BGe Scores Without Interventions.
+*********************************************
+You find the matlab files for this task in the folder GaussianScores.
+
+First of all it is necessary to calculate the BGe scores as a pre-step and 
+save this scores as a predefined structure.
+
+For calculating the BGe scores use the file pre_scores_gaussian.m. 
+In this file first the prior information is calculated by Compute_Prior_info.m
+and then the Scores are computed by the function SBmcmc_MakeScoreStructureGaussian.m.
+
+For more information about how the scores are calculated and how to set the parameters
+type help SBmcmc_MakeScoreStructureGaussian.
+
+This is a implementation of bayesian scores as described in:
+Geiger, D. and Heckerman, D. (1994). Learning Gaussian networks.
+Proceedings of the Tenth Conference on Uncertainty in Artificial
+Intelligence, pages 235-243.
+
+
+
+*********************************************
+Calculating BGe Scores With Interventions.
+*********************************************
+You find the matlab files for this task in the folder GaussianScoresIntervention.
+
+First of all it is necessary to calculate the BGe scores as a pre-step and 
+save this scores as a predefined structure.
+
+For calculating the BGe scores use the file pre_scores_gaussian_Intervention.m.
+In this file first the prior information is calculated by Compute_Prior_Info_Intervention.m
+and then the Scores are computed by the function SBmcmc_MakeScoreStructureGaussianIntervention.m
+
+For more information about how the scores are calculated and how to set the parameters
+type help SBmcmc_MakeScoreStructureGaussianIntervention.
+
+
+
+
+********************
+Running Order MCMC
+********************
+
+You find the matlab files for this task in folder MCMCOrder.
+The file example.m has explanations about how to run the algorithm to sample orders
+and how to run the algorithm for sampling DAGs given orders.
+
+
+
+
+
+***************************
+Calculating the AUC SCORES
+***************************
+
+You find the matlab files for this task in folder DGeUGe.
+
+There are two AUC scores, namely DGE and UGE.
+
+For getting DGE AUC value use DGEAurocValueNoDiag2.m
+For getting DGE AUC plot and value use DGERocCurveNoDiag2.m
+For getting UGE AUC value use UGEAurocValueNoDiag2.m
+For getting UGE AUC plot and value use UGERocCurveNoDiag2.m
+
+
+All these functions need the same input: (TrajectoryMean,idxtm,LimitX,FigNumber)
+
+TrajectoryMean: This is the posterior probability matrix. You get this matrix from a
+MCMC trajectory by using the functions media.m and media_UGE.m. The function media_UGE.m 
+should be used when considering only the skeleton of the network. The funcion media.m
+has an option for getting the PDAG. See their help for more information.
+
+idxtm: Index of true matrix. Should be a 2 colum matrix with each line representing an
+edge A--->B.
+For example the matrix [1 2; 3 1; 4 2] means the follwing edges 1-->2; 3-->1; 4-->2
+
+LimitX: is the upper range of X-axis to be presented in the graph. Note
+that the AUROC area under ROC curve will also be calculated with this
+limit. This means that you can have partial AUROC values, as AUROC_x,
+for any x, 0<x<=1.
+
+FigNumber: Is the number of the produced figure. Even if a figure is not produced 
+you should provide this number.
+
+

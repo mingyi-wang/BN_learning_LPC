@@ -1,0 +1,214 @@
+
+
+%type='random';
+%type='small-world';
+%type='scale-free_timecourse';
+%type='random_timecourse';
+s=[10 20 50 100 200 500 1000];
+%s=[50 100 200 500 1000];
+% 
+%   data1=dlmread('f:\projects\e_tfs_nogene.csv',',');
+%   data2=dlmread('f:\projects\e_transporter_nogene.csv',',');
+%   
+%   data=[data1;data2];
+%   data=data';
+%fid=fopen('h:\buf\NetRec\scale_free_results.txt','w+');
+fname3=sprintf('%s%s%s','..\results\lpc\SHD_results_ord2.txt');
+fname4=sprintf('%s%s%s','..\resu\NetRec\data\pc\SHD_results.txt');
+fname5=sprintf('%s%s%s','h:\buf\NetRec\data\bn\SHD_results.txt');
+fid=fopen(fname3,'w+');
+fprintf(fid,'num, predicted_edge_num,true, M.O., E.A., M.A., W.O., SHD\n');
+
+fid1=fopen(fname4,'w+');
+fprintf(fid1,'num, predicted_edge_num,true, M.O., E.A., M.A., W.O., SHD\n');
+
+fid2=fopen(fname5,'w+');
+%fprintf(fid2,'num, true, M.O., E.A., M.A., SHD\n');
+num_a = zeros(2,10);
+num_edges=zeros(2,10);
+num_true = zeros(2,10);
+num_mo = zeros(2,10);
+num_ea = zeros(2,10);
+num_ma = zeros(2,10);
+num_wo = zeros(2,10);
+num_shd = zeros(2,10);
+precision=zeros(2,10);
+recall=zeros(2,10);
+acc=zeros(2,10);
+
+num_a1 = zeros(2,10);
+num_edges1=zeros(2,10);
+num_true1 = zeros(2,10);
+num_mo1 = zeros(2,10);
+num_ea1 = zeros(2,10);
+num_ma1 = zeros(2,10);
+num_wo1 = zeros(2,10);
+num_shd1 = zeros(2,10);
+precision1=zeros(2,10);
+recall1=zeros(2,10);
+acc1=zeros(2,10);
+
+num_a2 = zeros(7,10);
+num_edges2=zeros(7,10);
+num_true2 = zeros(7,10);
+num_mo2 = zeros(7,10);
+num_ea2 = zeros(7,10);
+num_ma2 = zeros(7,10);
+num_wo2 = zeros(7,10);
+num_shd2 = zeros(7,10);
+precision2=zeros(7,10);
+recall2=zeros(7,10);
+acc2=zeros(7,10);
+
+for i=1:7
+    for j=1:10
+    %fname2=sprintf('%s%d%s%d%s','H:\buf\NetRec\100g_10rec_scale-free_A_',j,'.mat');
+    fname2=sprintf('%s%d%s','..\data\data_100genes\100g_10rec_A_',j,'.txt');
+    A=dlmread(fname2,'\t');
+    [ii,jj]=find(A~=0);
+    for kkk=1:length(ii)
+        if A(ii(kkk),jj(kkk))==-1
+          A(ii(kkk),jj(kkk))=1;          
+        end
+    end
+%    A= dag_to_cpdag(A);
+    fname1= sprintf('%s%d%s%d%s','..\results\lpc\100g_10rec_x_',j,'_',s(i),'_lpc_ord2.mat');
+%     fname1= sprintf('%s%s%s%d%s%d','H:\buf\NetRec\data\pc\100g_10rec_',type,'_x_',j,'_',s(i),'_PC_oldcc.mat');
+%     fname1= sprintf('%s%s%s%d%s%d','H:\buf\NetRec\data\lowpc\100g_10rec_',type,'_x_',j,'_',s(i),'_lowPC_oldcc_ord2.mat');
+     fname6= sprintf('%s%d%s%d%s','..\results\pc\100g_10rec_x_',j,'_',s(i),'_cpdag.txt');
+%    fname6= sprintf('%s%s%s%d%s%d','H:\buf\NetRec\data\pc\100g_10rec_',type,'_x_',j,'_',s(i),'_PC_oldcc.mat');
+%    fname_bn=sprintf('%s%s%s%d%s%d','H:\buf\NetRec\data\bn\100g_10rec_',type,'_x_',j,'_',s(i),'_bn.mat');
+
+%    [ii,jj]=find(A==-1);
+%    for k=1:length(ii)
+%       A(ii(k),jj(k))=1;
+%    end
+   load(fname1);
+   pdag(find(pdag==1))=2;
+   pdag(find(pdag==-1))=1;
+   eg=dag_to_essential_graph(A);
+   if i==7
+      i 
+   end 
+  
+   [num_a(i,j),num_edges(i,j),num_true(i,j),num_mo(i,j),num_ea(i,j),num_ma(i,j),num_wo(i,j),num_shd(i,j)]=compare_graphs(pdag,eg);
+   %[num_a(i,j),num_edges(i,j),num_true(i,j),num_mo(i,j),num_ea(i,j),num_ma(i,j),num_wo(i,j),num_shd(i,j),recall(i,j),precision(i,j),acc(i,j)]=compare_g(CPDAG,A);
+%   load(fname6);
+    pdag=dlmread(fname6,'\t');
+    [ii,jj]=find(pdag==1);
+    for k=1:length(ii)
+        if ii(k)<jj(k)
+        if pdag(jj(k),ii(k))==1
+       
+          pdag(ii(k),jj(k))=2;
+          pdag(jj(k),ii(k))=2; 
+        end
+        end
+    end
+    [num_a1(i,j),num_edges1(i,j),num_true1(i,j),num_mo1(i,j),num_ea1(i,j),num_ma1(i,j),num_wo1(i,j),num_shd1(i,j)]=compare_graphs(pdag,eg);
+%     load(fname_bn);
+%    cd('\buf\Software_Germany\DGeUGe');
+%    DAG_bn=media(DAGs,0);
+%    DAG_bn(find(DAG_bn>0.5))=1;
+%    DAG_bn(find(DAG_bn<=0.5))=0;
+%    [ii,jj]=find(DAG_bn==1);
+%    for k=1:length(ii)
+%       if DAG_bn(jj(k),ii(k))==1 
+%          DAG_bn(jj(k),ii(k))=2;
+%          DAG_bn(ii(k),jj(k))=2;
+%       end
+%    end
+%    cd('\projects\constraint_bn\');
+%    [num_a2(i,j),num_edges2(i,j),num_true2(i,j),num_mo2(i,j),num_ea2(i,j),num_ma2(i,j),num_wo2(i,j),num_shd2(i,j),recall2(i,j),precision2(i,j),acc2(i,j)]=compare_g(DAG_bn,A);
+    i
+    j
+  
+   fprintf(fid,'%d, %d, %d, %d, %d, %d, %d,  %d \n',num_a(i,j),num_edges(i,j),num_true(i,j),num_mo(i,j),num_ea(i,j),num_ma(i,j),num_wo(i,j),num_shd(i,j));
+   fprintf(fid1,'%d, %d, %d, %d, %d, %d, %d,%d\n',num_a1(i,j),num_edges1(i,j),num_true1(i,j),num_mo1(i,j),num_ea1(i,j),num_ma1(i,j),num_wo1(i,j),num_shd1(i,j));
+%    fprintf(fid2,'%d, %d, %d, %d, %d, %d, %d,%d, %f,%f, %f\n',num_a2(i,j),num_edges2(i,j),num_true2(i,j),num_mo2(i,j),num_ea2(i,j),num_ma2(i,j),num_wo2(i,j),num_shd2(i,j),recall2(i,j),precision2(i,j),acc2(i,j));
+   end
+   fprintf(fid,'\n');
+   fprintf(fid1,'\n');
+%    fprintf(fid2,'\n'); 
+end
+fclose(fid);
+fclose(fid1);
+% fclose(fid2);
+
+num_mo=num_mo+num_wo;
+%mean_num_a=mean(num_a,2);
+%mean_num_true=mean(num_true,2);
+mean_num_mo=mean(num_mo,2);
+mean_num_ea=mean(num_ea,2);
+mean_num_ma=mean(num_ma,2);
+mean_num_shd=mean(num_shd,2);
+%mean_num_wo=mean(num_wo,2);
+
+
+%std_num_a=std(num_a,0,2);
+%std_num_true=std(num_true,0,2);
+std_num_mo=std(num_mo,0,2);
+std_num_ea=std(num_ea,0,2);
+std_num_ma=std(num_ma,0,2);
+std_num_shd=std(num_shd,0,2);
+%std_num_wo=std(num_wo,0,2);
+
+num_mo1=num_mo1+num_wo1;
+%mean_num_a1=mean(num_a1,2);
+%mean_num_true1=mean(num_true1,2);
+mean_num_mo1=mean(num_mo1,2);
+mean_num_ea1=mean(num_ea1,2);
+mean_num_ma1=mean(num_ma1,2);
+mean_num_shd1=mean(num_shd1,2);
+%mean_num_wo1=mean(num_wo1,2);
+
+%std_num_a1=std(num_a1,0,2);
+%std_num_true1=std(num_true1,0,2);
+std_num_mo1=std(num_mo1,0,2);
+std_num_ea1=std(num_ea1,0,2);
+std_num_ma1=std(num_ma1,0,2);
+std_num_shd1=std(num_shd1,0,2);
+%std_num_wo1=std(num_wo1,0,2);
+
+figure
+  subplot(2,2,1);
+ 	hold all
+ 	errorbar(s, mean_num_shd, std_num_shd, '-+r')
+ 	errorbar(s, mean_num_shd1,std_num_shd1, '-v','color',[0 0.5 0.3])
+%     errorbar(s, mean_num_shd2,std_num_shd2, '-xb')
+ 	xlabel('N. of measurements')
+ 	ylabel('Total number of structual errors')
+ 	title('(a)')
+    
+    subplot(2,2,2);
+ 	hold all
+ 	errorbar(s, mean_num_ea, std_num_ea,'-+r')
+ 	errorbar(s, mean_num_ea1,std_num_ea1, '-v','color',[0 0.5 0.3])
+%     errorbar(s, mean_num_ea2,std_num_ea2,'-xb')
+ 	xlabel('N. of measurements')
+ 	ylabel('Number of extra arcs')
+ 	title('(b)')
+    
+    subplot(2,2,3);
+ 	hold all
+ 	errorbar(s, mean_num_ma, std_num_ma,'-+r')
+ 	errorbar(s, mean_num_ma1,std_num_ma1, '-v','color',[0 0.5 0.3])
+%     errorbar(s, mean_num_ma2,std_num_ma2, '-xb')
+ 	xlabel('N. of measurements')
+ 	ylabel('Number of missing arcs')
+ 	title('(c)')
+    
+    subplot(2,2,4);
+ 	hold all
+ 	errorbar(s, mean_num_mo,std_num_mo, '-+r')
+ 	errorbar(s, mean_num_mo1, std_num_mo1,'-v','color',[0 0.5 0.3])
+    xlabel('N. of measurements')
+ 	ylabel('Number of missing directions and reversed directions')
+%     subplot(2,3,5);
+%  	hold all
+%  	errorbar(s, mean_num_wo,std_num_wo, '-+r')
+%  	errorbar(s, mean_num_wo1, std_num_wo1,'-v','color',[0 0.5 0.3])
+%     errorbar(s, mean_num_mo2, std_num_mo2,'-xb')
+%  	xlabel('N. of measurements')
+%  	ylabel('Number of reversed directions')
+ 	title(['(d)'])

@@ -1,0 +1,11 @@
+1	raf
+2	mek
+3	plcg
+4	pip2
+5	pip3
+6	erk
+7	akt
+8	pka
+9	pkc
+10	p38
+11	jnk

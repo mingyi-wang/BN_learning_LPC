@@ -1,0 +1,179 @@
+% Calcuate the mean CI test numbers and the SHD values at order=0-9 
+%
+ss=[10 20 50 100 200 500 1000];  % Sample sizes
+z=[];
+y=[];
+x=[];
+max_alpha=0.05;
+mean_cis=[];
+std_cis=[];
+mean_aucs=[];
+std_aucs=[];
+num_a = zeros(10,10);
+num_edges=zeros(10,10);
+num_true = zeros(10,10);
+num_mo = zeros(10,10);
+num_ea = zeros(10,10);
+num_ma = zeros(10,10);
+num_wo = zeros(10,10);
+num_shd = zeros(10,10);
+% precision=zeros(10,10);
+% recall=zeros(10,10);
+% acc=zeros(10,10);
+mean_num_mo=[];
+   mean_num_ea=[];
+   mean_num_ma=[];
+   mean_num_wo=[];
+   mean_num_shd=[];
+   
+   std_num_mo=[];
+   std_num_ea=[];
+   std_num_ma=[];
+   std_num_wo=[];
+   std_num_shd=[];
+   max_ord=zeros(7,10);
+hold all;
+for i=1:7
+    ci=zeros(10,10);
+    AUC_ROC_lpc=zeros(10,10);
+    pAUC_ROC_lpc=zeros(10,10);
+    AUC_ROC_lpc=zeros(10,10);
+    for j=1:10
+        fname=['../data/data_100genes/100g_10rec_A_', num2str(j),'.txt'];
+        A=dlmread(fname,'\t');
+        A_undir=A|A';
+    filename= ['../results/lpc/100g_10rec_x_' num2str(j), '_',num2str(ss(i)),'_lpc_ug_all_ord.mat'];
+    load (filename);
+    
+    fname1= sprintf('%s%d%s%d%s','..\results\lpc\100g_10rec_x_',j,'_',ss(i),'_lpc_all_ord_pdags.mat');
+    load(fname1);
+    for k=1:10
+       if ci_num(k)==0
+          break; 
+       end
+    end
+    max_ord(i,j)=k-1;
+    for k=1:10
+      k
+      if k>1 
+        ci(k,j)=ci(k-1,j)+ci_num(k);
+      else
+        ci(k,j)=ci_num(k); 
+      end
+      if length(zMin{k})==0
+         zMin{k}=zMin{k-1}; 
+      end
+      [AUC_ROC_lpc( j,k) pAUC_ROC_lpc(j,k) AUC_PvsR_lpc(j,k)] = AUCs(zMin{k}, A_undir, [], max_alpha);
+      if length(pdag{k})==0
+           pdag{k}=pdag{k-1};
+      end
+      [eg] = dag_to_essential_graph(A);
+      %[num_a(j,k),num_edges(j,k),num_true(j,k),num_mo(j,k),num_ea(j,k),num_ma(j,k),num_wo(j,k),num_shd(j,k),recall(j,k),precision(j,k),acc(j,k)]=compare_g(pdag{k},A);
+      [num_a(j,k),num_edges(j,k),num_true(j,k),num_mo(j,k),num_ea(j,k),num_ma(j,k),num_wo(j,k),num_shd(j,k)]=compare_graphs(pdag{k},eg);
+    end
+    end
+    mean_auc=mean(AUC_PvsR_lpc,1);
+    std_auc=std(AUC_PvsR_lpc,0,1);
+    mean_ci=mean(ci,2);
+    std_ci=std(ci,0,2);
+   
+    mean_cis=[mean_cis,mean_ci];
+    std_cis=[std_cis,std_ci];
+    hold on; 
+    mean_aucs=[mean_aucs, mean_auc'];
+    std_aucs=[std_aucs,std_auc'];
+
+    mean_num_mo=[mean_num_mo; mean(num_mo,1)];
+    mean_num_ea=[mean_num_ea; mean(num_ea,1)];
+    mean_num_ma=[mean_num_ma; mean(num_ma,1)];
+    mean_num_wo=[mean_num_wo; mean(num_wo,1)];
+    mean_num_shd=[mean_num_shd; mean(num_shd,1)];
+   
+    std_num_mo=[std_num_mo;std(num_mo,0,1)];
+    std_num_ea=[std_num_ea;std(num_ea,0,1)];
+    std_num_ma=[std_num_ma;std(num_ma,0,1)];
+    std_num_wo=[std_num_wo;std(num_wo,0,1)];
+    std_num_shd=[std_num_shd;std(num_shd,0,1)];
+ 
+    x=[x,ones(1,10)'*i];
+
+    y=[y,[1:10]'];
+    z=[z,mean_ci];
+   
+  end
+  %bar3(z,'detached')
+  figure;
+  for i=1:7
+    max_ord1=max(max_ord,[],2)+1; 
+    subplot(1,2,1);  
+    
+    set(gca,'XTick',0:1:10)
+    set(gca,'YTick',0:10000:160000);
+    xlim([0 11]) ;
+    set(gca,'XTickLabel',{'','0','1','2','3','4','5','6','7','8','9'})
+    hold on;
+    grid on;
+    switch(i)
+      case 1
+         errorbar([1:max_ord1(i)],  mean_cis(1:max_ord1(i),i),std_cis(1:max_ord1(i),i), 'color',[1 0 1]);
+      case 2
+         errorbar([1:max_ord1(i)],  mean_cis(1:max_ord1(i),i),std_cis(1:max_ord1(i),i),  'color',[0 1 1]);
+      case 3
+         errorbar([1:max_ord1(i)], mean_cis(1:max_ord1(i),i),std_cis(1:max_ord1(i),i),  'color',[1 0 0]);
+      case 4
+         errorbar([1:max_ord1(i)],  mean_cis(1:max_ord1(i),i),std_cis(1:max_ord1(i),i),  'color',[0 1 0]);
+      case 5
+         errorbar([1:max_ord1(i)],  mean_cis(1:max_ord1(i),i),std_cis(1:max_ord1(i),i),  'color',[0 0 1]);
+      case 6
+         errorbar([1:max_ord1(i)],  mean_cis(1:max_ord1(i),i),std_cis(1:max_ord1(i),i), 'color',[0 0.5 0.3]);
+      case 7
+         errorbar([1:max_ord1(i)],  mean_cis(1:max_ord1(i),i),std_cis(1:max_ord1(i),i),  'color',[0.6 0.2 0]);
+    end
+    
+    xlabel('Order of conditional tests');
+    ylabel('Numbers of CI tests');
+%     subplot(1,3,2);
+%     hold on;       
+%     switch(i)
+%       case 1
+%          errorbar([1:10],  mean_aucs(:,i),std_aucs(:,i), 'color',[1 0 1]);
+%       case 2
+%          errorbar([1:10],  mean_aucs(:,i),std_aucs(:,i),  'color',[0 1 1]);
+%       case 3
+%          errorbar([1:10], mean_aucs(:,i),std_aucs(:,i),  'color',[1 0 0]);
+%       case 4
+%          errorbar([1:10],  mean_aucs(:,i),std_aucs(:,i),  'color',[0 1 0]);
+%       case 5
+%          errorbar([1:10],  mean_aucs(:,i),std_aucs(:,i),  'color',[0 0 1]);
+%       case 6
+%          errorbar([1:10],  mean_aucs(:,i),std_aucs(:,i), 'color',[0 0.5 0.3]);
+%       case 7
+%          errorbar([1:10],  mean_aucs(:,i),std_aucs(:,i),  'color',[0.6 0.2 0]);
+%     end
+    subplot(1,2,2);
+    xlim([0 11]) ;
+    set(gca,'XTick',0:1:10,'YTick',0:100:1600);
+    
+    set(gca,'XTickLabel',{'','0','1','2','3','4','5','6','7','8','9'})
+    hold on;
+    grid on;
+    switch(i)
+      case 1
+         errorbar([1:max_ord1(i)], mean_num_shd(i,1:max_ord1(i)), std_num_shd(i,1:max_ord1(i)), 'color',[1 0 1]);
+      case 2
+         errorbar([1:max_ord1(i)], mean_num_shd(i,1:max_ord1(i)), std_num_shd(i,1:max_ord1(i)), 'color',[0 1 1]);
+      case 3
+         errorbar([1:max_ord1(i)], mean_num_shd(i,1:max_ord1(i)), std_num_shd(i,1:max_ord1(i)), 'color',[1 0 0]);
+      case 4
+         errorbar([1:max_ord1(i)], mean_num_shd(i,1:max_ord1(i)), std_num_shd(i,1:max_ord1(i)), 'color',[0 1 0]);
+      case 5
+         errorbar([1:max_ord1(i)], mean_num_shd(i,1:max_ord1(i)), std_num_shd(i,1:max_ord1(i)), 'color',[0 0 1]);
+      case 6
+         errorbar([1:max_ord1(i)], mean_num_shd(i,1:max_ord1(i)), std_num_shd(i,1:max_ord1(i)), 'color',[0 0.5 0.3]);
+      case 7
+         errorbar([1:max_ord1(i)], mean_num_shd(i,1:max_ord1(i)), std_num_shd(i,1:max_ord1(i)), 'color',[0.6 0.2 0]);
+    end
+    xlabel('Order of conditional tests');
+    ylabel('Structure errors');
+  end
+  legend('SS=10' ,'SS=20','SS=50','SS=100' ,'SS=200','SS=500','SS=1000','Location','NorthEast');
